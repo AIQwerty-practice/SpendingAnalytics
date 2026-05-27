@@ -42,35 +42,25 @@ st.set_page_config(
 # =============================================================================
 st.markdown("""
     <style>
-    /* Main app background */
     .stApp {
         background-color: #0e1117;
     }
-
-    /* Sidebar styling */
     [data-testid="stSidebar"] {
         background-color: #1a1d24;
         border-right: 1px solid #2d3139;
     }
-
-    /* Metric cards */
     div[data-testid="stMetricValue"] {
         font-size: 1.5rem !important;
         font-weight: 700 !important;
         color: #fafafa !important;
     }
-
     div[data-testid="stMetricLabel"] {
         font-size: 0.85rem !important;
         color: #a0a0a0 !important;
     }
-
-    /* Dataframe styling */
     .stDataFrame {
         font-size: 0.9rem;
     }
-
-    /* Chat message containers */
     .user-msg {
         background-color: #1e3a5f;
         padding: 12px 16px;
@@ -81,7 +71,6 @@ st.markdown("""
         font-size: 0.95rem;
         line-height: 1.5;
     }
-
     .ai-msg {
         background-color: #2d1b4e;
         padding: 12px 16px;
@@ -92,8 +81,6 @@ st.markdown("""
         font-size: 0.95rem;
         line-height: 1.5;
     }
-
-    /* Privacy banner */
     .privacy-banner {
         background-color: #3e2723;
         border: 1px solid #ff9800;
@@ -104,8 +91,6 @@ st.markdown("""
         font-size: 0.9rem;
         margin: 12px 0;
     }
-
-    /* Info cards */
     .info-card {
         background-color: #1a1d24;
         border: 1px solid #2d3139;
@@ -115,46 +100,34 @@ st.markdown("""
         font-size: 0.9rem;
         line-height: 1.6;
     }
-
-    /* Upload area */
     [data-testid="stFileUploader"] {
         background-color: #1a1d24;
         border: 2px dashed #2d3139;
         border-radius: 8px;
         padding: 20px;
     }
-
-    /* Buttons */
     .stButton > button {
         border-radius: 8px !important;
         font-weight: 600 !important;
     }
-
-    /* Divider color */
     hr {
         border-color: #2d3139 !important;
         margin: 2rem 0 !important;
     }
-
-    /* Footer links */
     .footer-link {
         color: #64b5f6;
         text-decoration: none;
         font-size: 0.85rem;
     }
-
     .footer-link:hover {
         color: #90caf9;
         text-decoration: underline;
     }
-
-    /* Main title area */
     .main-title {
         color: #64b5f6;
         font-weight: 800;
         margin-bottom: 0.5rem;
     }
-
     .sub-title {
         color: #a0a0a0;
         font-size: 1.05rem;
@@ -184,7 +157,6 @@ if 'llm_client' not in st.session_state:
 with st.sidebar:
     st.markdown("## ⚙️ Settings")
 
-    # AI Connection
     st.markdown("### 🔑 AI Connection")
 
     if not check_token_available():
@@ -209,7 +181,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Privacy Toggle
     st.markdown("### 🔒 Privacy Mode")
     privacy_mode = st.toggle(
         "Send only summaries to AI",
@@ -229,7 +200,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Model Selection
     st.markdown("### 🧠 AI Model")
     model_choice = st.selectbox(
         "Choose model:",
@@ -247,7 +217,6 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # About
     st.markdown("""
     <div class="info-card">
     <b>About</b><br>
@@ -273,7 +242,7 @@ except Exception as e:
 
 
 # =============================================================================
-# HEADER - Using Streamlit native + CSS
+# HEADER
 # =============================================================================
 st.markdown('<h1 class="main-title">💰 Spending Analytics</h1>', unsafe_allow_html=True)
 st.markdown('<p class="sub-title">Upload your bank statements, visualize your spending, and chat with AI about your finances.</p>', unsafe_allow_html=True)
@@ -358,7 +327,6 @@ def preprocess_data(df):
 
     # Parse dates — handle multiple date columns safely
     if 'date' in df.columns:
-        # If date column is already datetime, skip conversion
         if not pd.api.types.is_datetime64_any_dtype(df['date']):
             df['date'] = pd.to_datetime(df['date'], errors='coerce')
         df['month'] = df['date'].dt.to_period('M').astype(str)
@@ -369,7 +337,6 @@ def preprocess_data(df):
     if 'amount' in df.columns:
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         if 'type' in df.columns:
-            # Handle both string and non-string type columns
             type_col = df['type'].astype(str).str.lower()
             df.loc[type_col.isin(['credit', 'income', 'deposit']), 'amount'] = -df['amount'].abs()
         df['amount'] = df['amount'].abs()
@@ -379,6 +346,8 @@ def preprocess_data(df):
         df['description'] = 'Unknown'
 
     return df
+
+
 if st.session_state.df is not None:
     df = preprocess_data(st.session_state.df)
     st.session_state.df = df
@@ -545,80 +514,84 @@ if st.session_state.df is not None:
             with st.spinner("AI is thinking..."):
                 try:
                     # Build data summary based on privacy mode
+                    summary_lines = []
+
                     if privacy_mode:
                         # Calculate monthly average safely
-                        if 'month' in df.columns and len(df) > 0:
-                            monthly_avg = df.groupby('month')['amount'].sum().mean()
-                            monthly_avg_str = f"${monthly_avg:.2f}"
+                        if "month" in df.columns and len(df) > 0:
+                            monthly_avg = df.groupby("month")["amount"].sum().mean()
+                            monthly_avg_str = "$" + "{:.2f}".format(monthly_avg)
                         else:
                             monthly_avg_str = "N/A"
 
                         # Get top categories safely
-                        if 'category' in df.columns and not df['category'].isna().all():
-                            top_cats = df.groupby('category')['amount'].sum().sort_values(ascending=False).head(5).to_dict()
+                        if "category" in df.columns and not df["category"].isna().all():
+                            top_cats = df.groupby("category")["amount"].sum().sort_values(ascending=False).head(5).to_dict()
                             top_cats_str = str(top_cats)
                         else:
                             top_cats_str = "Not categorized"
 
                         # Get date range safely
-                        if 'date' in df.columns and not df['date'].isna().all():
-                            date_min = df['date'].min().strftime('%Y-%m-%d')
-                            date_max = df['date'].max().strftime('%Y-%m-%d')
+                        if "date" in df.columns and not df["date"].isna().all():
+                            date_min = df["date"].min().strftime("%Y-%m-%d")
+                            date_max = df["date"].max().strftime("%Y-%m-%d")
                         else:
                             date_min = "N/A"
                             date_max = "N/A"
 
                         # Get most frequent merchants (privacy-safe: top 10 by count)
-                        frequent_merchants = df['description'].value_counts().head(10).to_dict()
+                        frequent_merchants = df["description"].value_counts().head(10).to_dict()
                         frequent_lines = []
                         for k, v in frequent_merchants.items():
-                            frequent_lines.append("  - " + str(k) + ": " + str(v) + " times")
-                        frequent_str = "
-".join(frequent_lines)
+                            line = "  - " + str(k) + ": " + str(v) + " times"
+                            frequent_lines.append(line)
+                        frequent_str = "\n".join(frequent_lines)
 
                         # Get spending by merchant (top 10 by amount)
-                        top_merchants = df.groupby('description')['amount'].sum().sort_values(ascending=False).head(10).to_dict()
+                        top_merchants = df.groupby("description")["amount"].sum().sort_values(ascending=False).head(10).to_dict()
                         merchant_lines = []
                         for k, v in top_merchants.items():
-                            merchant_lines.append("  - " + str(k) + ": $" + "{:.2f}".format(v))
-                        top_merchants_str = "
-".join(merchant_lines)
+                            line = "  - " + str(k) + ": $" + "{:.2f}".format(v)
+                            merchant_lines.append(line)
+                        top_merchants_str = "\n".join(merchant_lines)
 
-                        summary = f"""Spending Data Summary:
+                        summary_lines.append("Spending Data Summary:")
+                        summary_lines.append("")
+                        summary_lines.append("BASIC STATS:")
+                        summary_lines.append("- Total transactions: " + str(len(df)))
+                        summary_lines.append("- Total amount spent: $" + "{:.2f}".format(df["amount"].sum()))
+                        summary_lines.append("- Average transaction: $" + "{:.2f}".format(df["amount"].mean()))
+                        summary_lines.append("- Date range: " + date_min + " to " + date_max)
+                        summary_lines.append("")
+                        summary_lines.append("TOP CATEGORIES BY AMOUNT:")
+                        summary_lines.append(top_cats_str)
+                        summary_lines.append("")
+                        summary_lines.append("MOST FREQUENT MERCHANTS (by number of visits):")
+                        summary_lines.append(frequent_str)
+                        summary_lines.append("")
+                        summary_lines.append("TOP MERCHANTS BY TOTAL SPENDING:")
+                        summary_lines.append(top_merchants_str)
+                        summary_lines.append("")
+                        summary_lines.append("MONTHLY AVERAGES:")
+                        summary_lines.append("- Monthly average spending: " + monthly_avg_str)
 
-BASIC STATS:
-- Total transactions: {len(df)}
-- Total amount spent: ${df['amount'].sum():.2f}
-- Average transaction: ${df['amount'].mean():.2f}
-- Date range: {date_min} to {date_max}
-
-TOP CATEGORIES BY AMOUNT:
-{top_cats_str}
-
-MOST FREQUENT MERCHANTS (by number of visits):
-{frequent_str}
-
-TOP MERCHANTS BY TOTAL SPENDING:
-{top_merchants_str}
-
-MONTHLY AVERAGES:
-- Monthly average spending: {monthly_avg_str}
-"""
+                        summary = "\n".join(summary_lines)
                     else:
                         # Detailed mode
-                        if 'category' in df.columns:
-                            detail_df = df[['date', 'description', 'amount', 'category']].head(20)
-                            stats = df.groupby('category')['amount'].agg(['sum', 'mean', 'count']).to_string()
+                        if "category" in df.columns:
+                            detail_df = df[["date", "description", "amount", "category"]].head(20)
+                            stats = df.groupby("category")["amount"].agg(["sum", "mean", "count"]).to_string()
                         else:
-                            detail_df = df[['date', 'description', 'amount']].head(20)
+                            detail_df = df[["date", "description", "amount"]].head(20)
                             stats = "Categories not available"
 
-                        summary = f"""Detailed Transaction Data:
-{detail_df.to_string()}
+                        summary_lines.append("Detailed Transaction Data:")
+                        summary_lines.append(detail_df.to_string())
+                        summary_lines.append("")
+                        summary_lines.append("Summary statistics:")
+                        summary_lines.append(stats)
 
-Summary statistics:
-{stats}
-"""
+                        summary = "\n".join(summary_lines)
 
                     response = st.session_state.llm_client.query_spending(
                         user_question=user_question,
@@ -628,7 +601,7 @@ Summary statistics:
                     st.session_state.chat_history.append({"role": "assistant", "content": response})
 
                 except Exception as e:
-                    error_msg = f"Sorry, I encountered an error: {str(e)}. Please check your API token or try again."
+                    error_msg = "Sorry, I encountered an error: " + str(e) + ". Please check your API token or try again."
                     st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
 
             st.rerun()
@@ -651,99 +624,4 @@ with footer_cols[1]:
     st.markdown("Powered by Streamlit + Hugging Face", help=None)
 
 with footer_cols[2]:
-    st.markdown('[Privacy Policy](https://huggingface.co/privacy)', unsafe_allow_html=True)                with st.spinner("AI is thinking..."):
-                    try:
-                        # Build data summary based on privacy mode
-                        summary_lines = []
-
-                        if privacy_mode:
-                            # Calculate monthly average safely
-                            if "month" in df.columns and len(df) > 0:
-                                monthly_avg = df.groupby("month")["amount"].sum().mean()
-                                monthly_avg_str = "$" + "{:.2f}".format(monthly_avg)
-                            else:
-                                monthly_avg_str = "N/A"
-
-                            # Get top categories safely
-                            if "category" in df.columns and not df["category"].isna().all():
-                                top_cats = df.groupby("category")["amount"].sum().sort_values(ascending=False).head(5).to_dict()
-                                top_cats_str = str(top_cats)
-                            else:
-                                top_cats_str = "Not categorized"
-
-                            # Get date range safely
-                            if "date" in df.columns and not df["date"].isna().all():
-                                date_min = df["date"].min().strftime("%Y-%m-%d")
-                                date_max = df["date"].max().strftime("%Y-%m-%d")
-                            else:
-                                date_min = "N/A"
-                                date_max = "N/A"
-
-                            # Get most frequent merchants (privacy-safe: top 10 by count)
-                            frequent_merchants = df["description"].value_counts().head(10).to_dict()
-                            frequent_lines = []
-                            for k, v in frequent_merchants.items():
-                                frequent_lines.append("  - " + str(k) + ": " + str(v) + " times")
-                            frequent_str = "
-".join(frequent_lines)
-
-                            # Get spending by merchant (top 10 by amount)
-                            top_merchants = df.groupby("description")["amount"].sum().sort_values(ascending=False).head(10).to_dict()
-                            merchant_lines = []
-                            for k, v in top_merchants.items():
-                                merchant_lines.append("  - " + str(k) + ": $" + "{:.2f}".format(v))
-                            top_merchants_str = "
-".join(merchant_lines)
-
-                            summary_lines.append("Spending Data Summary:")
-                            summary_lines.append("")
-                            summary_lines.append("BASIC STATS:")
-                            summary_lines.append("- Total transactions: " + str(len(df)))
-                            summary_lines.append("- Total amount spent: $" + "{:.2f}".format(df["amount"].sum()))
-                            summary_lines.append("- Average transaction: $" + "{:.2f}".format(df["amount"].mean()))
-                            summary_lines.append("- Date range: " + date_min + " to " + date_max)
-                            summary_lines.append("")
-                            summary_lines.append("TOP CATEGORIES BY AMOUNT:")
-                            summary_lines.append(top_cats_str)
-                            summary_lines.append("")
-                            summary_lines.append("MOST FREQUENT MERCHANTS (by number of visits):")
-                            summary_lines.append(frequent_str)
-                            summary_lines.append("")
-                            summary_lines.append("TOP MERCHANTS BY TOTAL SPENDING:")
-                            summary_lines.append(top_merchants_str)
-                            summary_lines.append("")
-                            summary_lines.append("MONTHLY AVERAGES:")
-                            summary_lines.append("- Monthly average spending: " + monthly_avg_str)
-
-                            summary = "
-".join(summary_lines)
-                        else:
-                            # Detailed mode
-                            if "category" in df.columns:
-                                detail_df = df[["date", "description", "amount", "category"]].head(20)
-                                stats = df.groupby("category")["amount"].agg(["sum", "mean", "count"]).to_string()
-                            else:
-                                detail_df = df[["date", "description", "amount"]].head(20)
-                                stats = "Categories not available"
-
-                            summary_lines.append("Detailed Transaction Data:")
-                            summary_lines.append(detail_df.to_string())
-                            summary_lines.append("")
-                            summary_lines.append("Summary statistics:")
-                            summary_lines.append(stats)
-
-                            summary = "
-".join(summary_lines)
-
-                        response = st.session_state.llm_client.query_spending(
-                            user_question=user_question,
-                            transaction_summary=summary
-                        )
-
-                        st.session_state.chat_history.append({"role": "assistant", "content": response})
-
-                    except Exception as e:
-                        error_msg = "Sorry, I encountered an error: " + str(e) + ". Please check your API token or try again."
-                        st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
-
-            st.rerun()
+    st.markdown('[Privacy Policy](https://huggingface.co/privacy)', unsafe_allow_html=True)
