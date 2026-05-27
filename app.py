@@ -535,20 +535,50 @@ if st.session_state.df is not None:
                 try:
                     # Build data summary based on privacy mode
                     if privacy_mode:
+                        # Calculate monthly average safely
+                        if 'month' in df.columns and len(df) > 0:
+                            monthly_avg = df.groupby('month')['amount'].sum().mean()
+                            monthly_avg_str = f"${monthly_avg:.2f}"
+                        else:
+                            monthly_avg_str = "N/A"
+
+                        # Get top categories safely
+                        if 'category' in df.columns and not df['category'].isna().all():
+                            top_cats = df.groupby('category')['amount'].sum().sort_values(ascending=False).head(5).to_dict()
+                            top_cats_str = str(top_cats)
+                        else:
+                            top_cats_str = "Not categorized"
+
+                        # Get date range safely
+                        if 'date' in df.columns and not df['date'].isna().all():
+                            date_min = df['date'].min().strftime('%Y-%m-%d')
+                            date_max = df['date'].max().strftime('%Y-%m-%d')
+                        else:
+                            date_min = "N/A"
+                            date_max = "N/A"
+
                         summary = f"""Spending Summary:
 - Total transactions: {len(df)}
 - Total amount: ${df['amount'].sum():.2f}
 - Average transaction: ${df['amount'].mean():.2f}
-- Date range: {df['date'].min().strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A'} to {df['date'].max().strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A'}
-- Top categories: {df.groupby('category')['amount'].sum().sort_values(ascending=False).head(5).to_dict() if 'category' in df.columns else 'Not categorized'}
-- Monthly averages: ${df.groupby('month')['amount'].sum().mean():.2f if 'month' in df.columns else 'N/A'}
+- Date range: {date_min} to {date_max}
+- Top categories: {top_cats_str}
+- Monthly averages: {monthly_avg_str}
 """
                     else:
+                        # Detailed mode
+                        if 'category' in df.columns:
+                            detail_df = df[['date', 'description', 'amount', 'category']].head(20)
+                            stats = df.groupby('category')['amount'].agg(['sum', 'mean', 'count']).to_string()
+                        else:
+                            detail_df = df[['date', 'description', 'amount']].head(20)
+                            stats = "Categories not available"
+
                         summary = f"""Detailed Transaction Data:
-{df[['date', 'description', 'amount', 'category']].head(20).to_string() if 'category' in df.columns else df[['date', 'description', 'amount']].head(20).to_string()}
+{detail_df.to_string()}
 
 Summary statistics:
-{df.groupby('category')['amount'].agg(['sum', 'mean', 'count']).to_string() if 'category' in df.columns else 'Categories not available'}
+{stats}
 """
 
                     response = st.session_state.llm_client.query_spending(
