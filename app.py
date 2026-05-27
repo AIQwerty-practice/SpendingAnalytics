@@ -457,20 +457,39 @@ if st.session_state.df is not None:
 
         with cat_cols[1]:
             if st.button("🤖 Auto-Categorize", type="primary", disabled=st.session_state.categorized):
-                with st.spinner("AI is analyzing your transactions..."):
+                with st.spinner("AI is analyzing your transactions in batches... (this may take 1-2 minutes)"):
                     categories = []
                     progress_bar = st.progress(0)
 
-                    for i, (_, row) in enumerate(df.iterrows()):
-                        try:
-                            desc = str(row.get('description', 'Unknown'))
-                            amount = float(row.get('amount', 0))
-                            cat = st.session_state.llm_client.categorize_transaction(desc, amount)
-                            categories.append(cat)
-                        except Exception:
-                            categories.append("Other")
+                    # Process in batches of 15 for speed
+                    BATCH_SIZE = 15
+                    total_rows = len(df)
 
-                        progress_bar.progress(min((i + 1) / len(df), 1.0))
+                    for batch_start in range(0, total_rows, BATCH_SIZE):
+                        batch_end = min(batch_start + BATCH_SIZE, total_rows)
+                        batch_rows = df.iloc[batch_start:batch_end]
+
+                        # Prepare batch data
+                        batch_tx = []
+                        for _, row in batch_rows.iterrows():
+                            batch_tx.append({
+                                'description': str(row.get('description', 'Unknown')),
+                                'amount': float(row.get('amount', 0))
+                            })
+
+                        try:
+                            batch_cats = st.session_state.llm_client.categorize_batch(batch_tx)
+                            categories.extend(batch_cats)
+                        except Exception as e:
+                            # Fallback: categorize each individually if batch fails
+                            for tx in batch_tx:
+                                try:
+                                    cat = st.session_state.llm_client.categorize_transaction(tx['description'], tx['amount'])
+                                    categories.append(cat)
+                                except Exception:
+                                    categories.append("Other")
+
+                        progress_bar.progress(min(batch_end / total_rows, 1.0))
 
                     df['category'] = categories
                     st.session_state.df = df

@@ -253,6 +253,68 @@ If the data doesn't contain enough information to answer, say so clearly."""
 
         return category
 
+    def categorize_batch(self, transactions: list) -> list:
+        """
+        Categorize multiple transactions in a single API call (much faster).
+
+        Args:
+            transactions: List of dicts with 'description' and 'amount' keys
+                         Example: [{"description": "Starbucks", "amount": 5.67}, ...]
+                         Max 20 items per batch recommended.
+
+        Returns:
+            List of category names matching the input order
+        """
+        if not transactions:
+            return []
+
+        # Build the prompt
+        lines = []
+        for i, t in enumerate(transactions):
+            lines.append(f"{i+1}. {t['description']} | ${t['amount']}")
+
+        tx_list = "
+".join(lines)
+
+        messages = [
+            {"role": "system", "content": "You categorize bank transactions. For each numbered item, reply with ONLY the category name. Categories: Food, Transport, Entertainment, Shopping, Utilities, Health, Education, Travel, Income, Other. Reply in the exact same numbered format."},
+            {"role": "user", "content": f"Categorize these transactions:
+
+{tx_list}
+
+Reply in this exact format (one per line):
+1. CategoryName
+2. CategoryName
+..."}
+        ]
+
+        response = self.chat(messages, max_tokens=200, temperature=0.1)
+        raw_text = response["content"].strip()
+
+        # Parse the numbered response
+        categories = []
+        for line in raw_text.split("
+"):
+            line = line.strip()
+            if not line:
+                continue
+            # Remove number prefix like "1. " or "1) "
+            parts = line.split(".", 1)
+            if len(parts) == 2 and parts[0].strip().isdigit():
+                cat = parts[1].strip()
+            else:
+                cat = line
+
+            # Clean up
+            cat = cat.replace("Category: ", "").replace("**", "").strip()
+            categories.append(cat)
+
+        # Pad with "Other" if we got fewer categories than transactions
+        while len(categories) < len(transactions):
+            categories.append("Other")
+
+        return categories[:len(transactions)]
+
 
 # Backward-compatible function for easy migration from Ollama
 def get_llm_client(api_token: Optional[str] = None, model: Optional[str] = None):
