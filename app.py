@@ -568,13 +568,35 @@ if st.session_state.df is not None:
                             date_min = "N/A"
                             date_max = "N/A"
 
-                        summary = f"""Spending Summary:
+                        # Get most frequent merchants (privacy-safe: top 10 by count)
+                        frequent_merchants = df['description'].value_counts().head(10).to_dict()
+                        frequent_str = "
+".join([f"  - {k}: {v} times" for k, v in frequent_merchants.items()])
+
+                        # Get spending by merchant (top 10 by amount)
+                        top_merchants = df.groupby('description')['amount'].sum().sort_values(ascending=False).head(10).to_dict()
+                        top_merchants_str = "
+".join([f"  - {k}: ${v:.2f}" for k, v in top_merchants.items()])
+
+                        summary = f"""Spending Data Summary:
+
+BASIC STATS:
 - Total transactions: {len(df)}
-- Total amount: ${df['amount'].sum():.2f}
+- Total amount spent: ${df['amount'].sum():.2f}
 - Average transaction: ${df['amount'].mean():.2f}
 - Date range: {date_min} to {date_max}
-- Top categories: {top_cats_str}
-- Monthly averages: {monthly_avg_str}
+
+TOP CATEGORIES BY AMOUNT:
+{top_cats_str}
+
+MOST FREQUENT MERCHANTS (by number of visits):
+{frequent_str}
+
+TOP MERCHANTS BY TOTAL SPENDING:
+{top_merchants_str}
+
+MONTHLY AVERAGES:
+- Monthly average spending: {monthly_avg_str}
 """
                     else:
                         # Detailed mode
