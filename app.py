@@ -2,13 +2,14 @@
 app.py
 Spending Analytics with CSV + LLM
 Streamlit app with Hugging Face Inference API integration.
+LAZY LOADING: AI only connects when user requests it, preventing startup timeouts.
 
 Features:
 - CSV upload & validation
 - Interactive spending dashboard
-- AI-powered transaction categorization
-- Natural language chatbot (Hugging Face)
-- Privacy mode toggle (controls data sent to LLM)
+- AI-powered transaction categorization (on-demand)
+- Natural language chatbot (on-demand)
+- Privacy mode toggle
 
 Requirements:
     pip install -r requirements.txt
@@ -38,102 +39,27 @@ st.set_page_config(
 )
 
 # =============================================================================
-# CUSTOM CSS - Scoped for reliability
+# CUSTOM CSS
 # =============================================================================
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #0e1117;
-    }
-    [data-testid="stSidebar"] {
-        background-color: #1a1d24;
-        border-right: 1px solid #2d3139;
-    }
-    div[data-testid="stMetricValue"] {
-        font-size: 1.5rem !important;
-        font-weight: 700 !important;
-        color: #fafafa !important;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-size: 0.85rem !important;
-        color: #a0a0a0 !important;
-    }
-    .stDataFrame {
-        font-size: 0.9rem;
-    }
-    .user-msg {
-        background-color: #1e3a5f;
-        padding: 12px 16px;
-        border-radius: 12px;
-        border-left: 4px solid #4fc3f7;
-        margin: 8px 0;
-        color: #e0e0e0;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .ai-msg {
-        background-color: #2d1b4e;
-        padding: 12px 16px;
-        border-radius: 12px;
-        border-left: 4px solid #ce93d8;
-        margin: 8px 0;
-        color: #e0e0e0;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .privacy-banner {
-        background-color: #3e2723;
-        border: 1px solid #ff9800;
-        border-left: 4px solid #ff9800;
-        padding: 12px 16px;
-        border-radius: 8px;
-        color: #ffcc80;
-        font-size: 0.9rem;
-        margin: 12px 0;
-    }
-    .info-card {
-        background-color: #1a1d24;
-        border: 1px solid #2d3139;
-        padding: 16px;
-        border-radius: 8px;
-        color: #c0c0c0;
-        font-size: 0.9rem;
-        line-height: 1.6;
-    }
-    [data-testid="stFileUploader"] {
-        background-color: #1a1d24;
-        border: 2px dashed #2d3139;
-        border-radius: 8px;
-        padding: 20px;
-    }
-    .stButton > button {
-        border-radius: 8px !important;
-        font-weight: 600 !important;
-    }
-    hr {
-        border-color: #2d3139 !important;
-        margin: 2rem 0 !important;
-    }
-    .footer-link {
-        color: #64b5f6;
-        text-decoration: none;
-        font-size: 0.85rem;
-    }
-    .footer-link:hover {
-        color: #90caf9;
-        text-decoration: underline;
-    }
-    .main-title {
-        color: #64b5f6;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-    }
-    .sub-title {
-        color: #a0a0a0;
-        font-size: 1.05rem;
-        margin-bottom: 2rem;
-        line-height: 1.5;
-    }
+    .stApp { background-color: #0e1117; }
+    [data-testid="stSidebar"] { background-color: #1a1d24; border-right: 1px solid #2d3139; }
+    div[data-testid="stMetricValue"] { font-size: 1.5rem !important; font-weight: 700 !important; color: #fafafa !important; }
+    div[data-testid="stMetricLabel"] { font-size: 0.85rem !important; color: #a0a0a0 !important; }
+    .stDataFrame { font-size: 0.9rem; }
+    .user-msg { background-color: #1e3a5f; padding: 12px 16px; border-radius: 12px; border-left: 4px solid #4fc3f7; margin: 8px 0; color: #e0e0e0; font-size: 0.95rem; line-height: 1.5; }
+    .ai-msg { background-color: #2d1b4e; padding: 12px 16px; border-radius: 12px; border-left: 4px solid #ce93d8; margin: 8px 0; color: #e0e0e0; font-size: 0.95rem; line-height: 1.5; }
+    .privacy-banner { background-color: #3e2723; border: 1px solid #ff9800; border-left: 4px solid #ff9800; padding: 12px 16px; border-radius: 8px; color: #ffcc80; font-size: 0.9rem; margin: 12px 0; }
+    .info-card { background-color: #1a1d24; border: 1px solid #2d3139; padding: 16px; border-radius: 8px; color: #c0c0c0; font-size: 0.9rem; line-height: 1.6; }
+    [data-testid="stFileUploader"] { background-color: #1a1d24; border: 2px dashed #2d3139; border-radius: 8px; padding: 20px; }
+    .stButton > button { border-radius: 8px !important; font-weight: 600 !important; }
+    hr { border-color: #2d3139 !important; margin: 2rem 0 !important; }
+    .footer-link { color: #64b5f6; text-decoration: none; font-size: 0.85rem; }
+    .footer-link:hover { color: #90caf9; text-decoration: underline; }
+    .main-title { color: #64b5f6; font-weight: 800; margin-bottom: 0.5rem; }
+    .sub-title { color: #a0a0a0; font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.5; }
+    .connect-box { background-color: #1a1d24; border: 1px solid #2d3139; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -149,6 +75,31 @@ if 'categorized' not in st.session_state:
     st.session_state.categorized = False
 if 'llm_client' not in st.session_state:
     st.session_state.llm_client = None
+if 'ai_connected' not in st.session_state:
+    st.session_state.ai_connected = False
+
+
+# =============================================================================
+# LAZY AI CONNECTION FUNCTION
+# =============================================================================
+def connect_ai():
+    """Connect to Hugging Face AI on demand. Returns True if successful."""
+    if st.session_state.ai_connected and st.session_state.llm_client is not None:
+        return True
+
+    if not check_token_available():
+        return False
+
+    try:
+        hf_token = get_hf_api_token()
+        # Get selected model from sidebar state if available
+        model = getattr(st.session_state, 'selected_model', "microsoft/Phi-3-mini-4k-instruct")
+        st.session_state.llm_client = get_llm_client(api_token=hf_token, model=model)
+        st.session_state.ai_connected = True
+        return True
+    except Exception as e:
+        st.error(f"Failed to connect AI: {e}")
+        return False
 
 
 # =============================================================================
@@ -173,10 +124,12 @@ with st.sidebar:
             st.success("Token set! Refreshing...")
             st.rerun()
     else:
-        st.success("✅ AI Connected")
+        st.success("✅ Token Ready")
         if st.button("🔄 Change Token"):
             import os
             os.environ.pop("HF_TOKEN", None)
+            st.session_state.ai_connected = False
+            st.session_state.llm_client = None
             st.rerun()
 
     st.markdown("---")
@@ -214,6 +167,7 @@ with st.sidebar:
     )
 
     selected_model = model_choice.split(" (")[0]
+    st.session_state.selected_model = selected_model
 
     st.markdown("---")
 
@@ -225,20 +179,6 @@ with st.sidebar:
     <a href="https://huggingface.co/privacy" target="_blank" class="footer-link">HF Privacy Policy</a>
     </div>
     """, unsafe_allow_html=True)
-
-
-# =============================================================================
-# INITIALIZE LLM CLIENT
-# =============================================================================
-try:
-    if st.session_state.llm_client is None and check_token_available():
-        hf_token = get_hf_api_token()
-        st.session_state.llm_client = get_llm_client(
-            api_token=hf_token,
-            model=selected_model
-        )
-except Exception as e:
-    st.error(f"AI initialization failed: {e}")
 
 
 # =============================================================================
@@ -299,7 +239,6 @@ def preprocess_data(df):
     """Clean and standardize transaction data."""
     df = df.copy()
 
-    # Detect and rename columns (flexible matching) — avoid duplicates
     col_mapping = {}
     used_targets = set()
 
@@ -318,14 +257,12 @@ def preprocess_data(df):
         elif any(x in col_lower for x in ['category', 'cat', 'group']):
             target = 'category'
 
-        # Only map if target not already used (prevents duplicate column names)
         if target and target not in used_targets:
             col_mapping[col] = target
             used_targets.add(target)
 
     df = df.rename(columns=col_mapping)
 
-    # Parse dates — handle multiple date columns safely
     if 'date' in df.columns:
         if not pd.api.types.is_datetime64_any_dtype(df['date']):
             df['date'] = pd.to_datetime(df['date'], errors='coerce')
@@ -333,7 +270,6 @@ def preprocess_data(df):
         df['year'] = df['date'].dt.year
         df['day_of_week'] = df['date'].dt.day_name()
 
-    # Clean amounts
     if 'amount' in df.columns:
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         if 'type' in df.columns:
@@ -341,7 +277,6 @@ def preprocess_data(df):
             df.loc[type_col.isin(['credit', 'income', 'deposit']), 'amount'] = -df['amount'].abs()
         df['amount'] = df['amount'].abs()
 
-    # Ensure description exists
     if 'description' not in df.columns:
         df['description'] = 'Unknown'
 
@@ -439,29 +374,38 @@ if st.session_state.df is not None:
 
 
     # =============================================================================
-    # AI CATEGORIZATION
+    # AI CATEGORIZATION (LAZY LOADED)
     # =============================================================================
     st.markdown("---")
     st.markdown("### 🏷️ AI-Powered Categorization")
 
-    if st.session_state.llm_client is None:
+    if not check_token_available():
         st.info("🔑 Add your Hugging Face token in the sidebar to enable AI categorization")
-    else:
-        cat_cols = st.columns([3, 1])
+    elif not st.session_state.categorized:
+        # Show connect button if not connected
+        if not st.session_state.ai_connected:
+            st.markdown("""
+            <div class="connect-box">
+            <b>🤖 AI Ready</b><br>
+            Click below to connect the AI and categorize your transactions.<br>
+            <small>(First connection may take 30-60 seconds for model loading)</small>
+            </div>
+            """, unsafe_allow_html=True)
 
-        with cat_cols[0]:
-            if not st.session_state.categorized:
-                st.write("Your transactions are not categorized yet. Click the button to use AI for automatic categorization.")
-            else:
-                st.success("✅ Transactions already categorized")
-
-        with cat_cols[1]:
-            if st.button("🤖 Auto-Categorize", type="primary", disabled=st.session_state.categorized):
-                with st.spinner("AI is analyzing your transactions in batches... (this may take 1-2 minutes)"):
+            if st.button("🚀 Connect AI & Categorize", type="primary"):
+                with st.spinner("Connecting to AI... (first load may take 30-60s)"):
+                    if connect_ai():
+                        st.success("✅ AI Connected!")
+                        st.rerun()
+                    else:
+                        st.error("Failed to connect. Check your token.")
+        else:
+            # AI is connected, show categorize button
+            if st.button("🤖 Auto-Categorize", type="primary"):
+                with st.spinner("AI is analyzing your transactions in batches..."):
                     categories = []
                     progress_bar = st.progress(0)
 
-                    # Process in batches of 15 for speed
                     BATCH_SIZE = 15
                     total_rows = len(df)
 
@@ -469,7 +413,6 @@ if st.session_state.df is not None:
                         batch_end = min(batch_start + BATCH_SIZE, total_rows)
                         batch_rows = df.iloc[batch_start:batch_end]
 
-                        # Prepare batch data
                         batch_tx = []
                         for _, row in batch_rows.iterrows():
                             batch_tx.append({
@@ -481,7 +424,7 @@ if st.session_state.df is not None:
                             batch_cats = st.session_state.llm_client.categorize_batch(batch_tx)
                             categories.extend(batch_cats)
                         except Exception as e:
-                            # Fallback: categorize each individually if batch fails
+                            # Fallback: individual calls
                             for tx in batch_tx:
                                 try:
                                     cat = st.session_state.llm_client.categorize_transaction(tx['description'], tx['amount'])
@@ -496,15 +439,17 @@ if st.session_state.df is not None:
                     st.session_state.categorized = True
                     st.success(f"✅ Categorized {len(df)} transactions!")
                     st.rerun()
+    else:
+        st.success("✅ Transactions already categorized")
 
 
     # =============================================================================
-    # AI CHATBOT
+    # AI CHATBOT (LAZY LOADED)
     # =============================================================================
     st.markdown("---")
     st.markdown("### 🤖 Chat with Your Spending Data")
 
-    if st.session_state.llm_client is None:
+    if not check_token_available():
         st.info("🔑 Add your Hugging Face token in the sidebar to enable the AI chatbot")
     else:
         # Privacy info box
@@ -524,110 +469,122 @@ if st.session_state.df is not None:
             else:
                 st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
 
-        # Input
-        user_question = st.chat_input("Ask about your spending...")
+        # Show connect button if not connected
+        if not st.session_state.ai_connected:
+            st.markdown("""
+            <div class="connect-box">
+            <b>💬 AI Chat Ready</b><br>
+            Click below to connect the AI chatbot.<br>
+            <small>(First connection may take 30-60 seconds for model loading)</small>
+            </div>
+            """, unsafe_allow_html=True)
 
-        if user_question:
-            st.session_state.chat_history.append({"role": "user", "content": user_question})
-
-            with st.spinner("AI is thinking..."):
-                try:
-                    # Build data summary based on privacy mode
-                    summary_lines = []
-
-                    if privacy_mode:
-                        # Calculate monthly average safely
-                        if "month" in df.columns and len(df) > 0:
-                            monthly_avg = df.groupby("month")["amount"].sum().mean()
-                            monthly_avg_str = "$" + "{:.2f}".format(monthly_avg)
-                        else:
-                            monthly_avg_str = "N/A"
-
-                        # Get top categories safely
-                        if "category" in df.columns and not df["category"].isna().all():
-                            top_cats = df.groupby("category")["amount"].sum().sort_values(ascending=False).head(5).to_dict()
-                            top_cats_str = str(top_cats)
-                        else:
-                            top_cats_str = "Not categorized"
-
-                        # Get date range safely
-                        if "date" in df.columns and not df["date"].isna().all():
-                            date_min = df["date"].min().strftime("%Y-%m-%d")
-                            date_max = df["date"].max().strftime("%Y-%m-%d")
-                        else:
-                            date_min = "N/A"
-                            date_max = "N/A"
-
-                        # Get most frequent merchants (privacy-safe: top 10 by count)
-                        frequent_merchants = df["description"].value_counts().head(10).to_dict()
-                        frequent_lines = []
-                        for k, v in frequent_merchants.items():
-                            line = "  - " + str(k) + ": " + str(v) + " times"
-                            frequent_lines.append(line)
-                        frequent_str = "\n".join(frequent_lines)
-
-                        # Get spending by merchant (top 10 by amount)
-                        top_merchants = df.groupby("description")["amount"].sum().sort_values(ascending=False).head(10).to_dict()
-                        merchant_lines = []
-                        for k, v in top_merchants.items():
-                            line = "  - " + str(k) + ": $" + "{:.2f}".format(v)
-                            merchant_lines.append(line)
-                        top_merchants_str = "\n".join(merchant_lines)
-
-                        summary_lines.append("Spending Data Summary:")
-                        summary_lines.append("")
-                        summary_lines.append("BASIC STATS:")
-                        summary_lines.append("- Total transactions: " + str(len(df)))
-                        summary_lines.append("- Total amount spent: $" + "{:.2f}".format(df["amount"].sum()))
-                        summary_lines.append("- Average transaction: $" + "{:.2f}".format(df["amount"].mean()))
-                        summary_lines.append("- Date range: " + date_min + " to " + date_max)
-                        summary_lines.append("")
-                        summary_lines.append("TOP CATEGORIES BY AMOUNT:")
-                        summary_lines.append(top_cats_str)
-                        summary_lines.append("")
-                        summary_lines.append("MOST FREQUENT MERCHANTS (by number of visits):")
-                        summary_lines.append(frequent_str)
-                        summary_lines.append("")
-                        summary_lines.append("TOP MERCHANTS BY TOTAL SPENDING:")
-                        summary_lines.append(top_merchants_str)
-                        summary_lines.append("")
-                        summary_lines.append("MONTHLY AVERAGES:")
-                        summary_lines.append("- Monthly average spending: " + monthly_avg_str)
-
-                        summary = "\n".join(summary_lines)
+            if st.button("🚀 Connect AI Chat", type="primary"):
+                with st.spinner("Connecting to AI... (first load may take 30-60s)"):
+                    if connect_ai():
+                        st.success("✅ AI Chat Connected!")
+                        st.rerun()
                     else:
-                        # Detailed mode
-                        if "category" in df.columns:
-                            detail_df = df[["date", "description", "amount", "category"]].head(20)
-                            stats = df.groupby("category")["amount"].agg(["sum", "mean", "count"]).to_string()
+                        st.error("Failed to connect. Check your token.")
+        else:
+            # AI connected, show chat input
+            user_question = st.chat_input("Ask about your spending...")
+
+            if user_question:
+                st.session_state.chat_history.append({"role": "user", "content": user_question})
+
+                with st.spinner("AI is thinking..."):
+                    try:
+                        # Build data summary based on privacy mode
+                        summary_lines = []
+
+                        if privacy_mode:
+                            if "month" in df.columns and len(df) > 0:
+                                monthly_avg = df.groupby("month")["amount"].sum().mean()
+                                monthly_avg_str = "$" + "{:.2f}".format(monthly_avg)
+                            else:
+                                monthly_avg_str = "N/A"
+
+                            if "category" in df.columns and not df["category"].isna().all():
+                                top_cats = df.groupby("category")["amount"].sum().sort_values(ascending=False).head(5).to_dict()
+                                top_cats_str = str(top_cats)
+                            else:
+                                top_cats_str = "Not categorized"
+
+                            if "date" in df.columns and not df["date"].isna().all():
+                                date_min = df["date"].min().strftime("%Y-%m-%d")
+                                date_max = df["date"].max().strftime("%Y-%m-%d")
+                            else:
+                                date_min = "N/A"
+                                date_max = "N/A"
+
+                            frequent_merchants = df["description"].value_counts().head(10).to_dict()
+                            frequent_lines = []
+                            for k, v in frequent_merchants.items():
+                                line = "  - " + str(k) + ": " + str(v) + " times"
+                                frequent_lines.append(line)
+                            frequent_str = "\n".join(frequent_lines)
+
+                            top_merchants = df.groupby("description")["amount"].sum().sort_values(ascending=False).head(10).to_dict()
+                            merchant_lines = []
+                            for k, v in top_merchants.items():
+                                line = "  - " + str(k) + ": $" + "{:.2f}".format(v)
+                                merchant_lines.append(line)
+                            top_merchants_str = "\n".join(merchant_lines)
+
+                            summary_lines.append("Spending Data Summary:")
+                            summary_lines.append("")
+                            summary_lines.append("BASIC STATS:")
+                            summary_lines.append("- Total transactions: " + str(len(df)))
+                            summary_lines.append("- Total amount spent: $" + "{:.2f}".format(df["amount"].sum()))
+                            summary_lines.append("- Average transaction: $" + "{:.2f}".format(df["amount"].mean()))
+                            summary_lines.append("- Date range: " + date_min + " to " + date_max)
+                            summary_lines.append("")
+                            summary_lines.append("TOP CATEGORIES BY AMOUNT:")
+                            summary_lines.append(top_cats_str)
+                            summary_lines.append("")
+                            summary_lines.append("MOST FREQUENT MERCHANTS (by number of visits):")
+                            summary_lines.append(frequent_str)
+                            summary_lines.append("")
+                            summary_lines.append("TOP MERCHANTS BY TOTAL SPENDING:")
+                            summary_lines.append(top_merchants_str)
+                            summary_lines.append("")
+                            summary_lines.append("MONTHLY AVERAGES:")
+                            summary_lines.append("- Monthly average spending: " + monthly_avg_str)
+
+                            summary = "\n".join(summary_lines)
                         else:
-                            detail_df = df[["date", "description", "amount"]].head(20)
-                            stats = "Categories not available"
+                            if "category" in df.columns:
+                                detail_df = df[["date", "description", "amount", "category"]].head(20)
+                                stats = df.groupby("category")["amount"].agg(["sum", "mean", "count"]).to_string()
+                            else:
+                                detail_df = df[["date", "description", "amount"]].head(20)
+                                stats = "Categories not available"
 
-                        summary_lines.append("Detailed Transaction Data:")
-                        summary_lines.append(detail_df.to_string())
-                        summary_lines.append("")
-                        summary_lines.append("Summary statistics:")
-                        summary_lines.append(stats)
+                            summary_lines.append("Detailed Transaction Data:")
+                            summary_lines.append(detail_df.to_string())
+                            summary_lines.append("")
+                            summary_lines.append("Summary statistics:")
+                            summary_lines.append(stats)
 
-                        summary = "\n".join(summary_lines)
+                            summary = "\n".join(summary_lines)
 
-                    response = st.session_state.llm_client.query_spending(
-                        user_question=user_question,
-                        transaction_summary=summary
-                    )
+                        response = st.session_state.llm_client.query_spending(
+                            user_question=user_question,
+                            transaction_summary=summary
+                        )
 
-                    st.session_state.chat_history.append({"role": "assistant", "content": response})
+                        st.session_state.chat_history.append({"role": "assistant", "content": response})
 
-                except Exception as e:
-                    error_msg = "Sorry, I encountered an error: " + str(e) + ". Please check your API token or try again."
-                    st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
+                    except Exception as e:
+                        error_msg = "Sorry, I encountered an error: " + str(e) + ". Please check your API token or try again."
+                        st.session_state.chat_history.append({"role": "assistant", "content": error_msg})
 
-            st.rerun()
+                st.rerun()
 
-        if st.session_state.chat_history and st.button("🗑️ Clear Chat"):
-            st.session_state.chat_history = []
-            st.rerun()
+            if st.session_state.chat_history and st.button("🗑️ Clear Chat"):
+                st.session_state.chat_history = []
+                st.rerun()
 
 
 # =============================================================================
