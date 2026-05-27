@@ -1,6 +1,8 @@
 # 💰 Spending Analytics with CSV + LLM
 
-An interactive Streamlit application that helps users analyze their spending habits through automated transaction categorization, interactive dashboards, and a natural-language AI chatbot. Upload your bank statements (CSV) and get instant insights powered by a local LLM.
+An interactive Streamlit application that helps users analyze their spending habits through automated transaction categorization, interactive dashboards, and a natural-language AI chatbot. Upload your bank statements (CSV) and get instant insights powered by AI.
+
+**🌐 Works online** — no local installations needed thanks to Hugging Face Inference API integration.
 
 ---
 
@@ -9,27 +11,17 @@ An interactive Streamlit application that helps users analyze their spending hab
 | Feature | Description |
 |---|---|
 | **📊 Interactive Dashboard** | Visualize spending trends, category breakdowns, and monthly summaries with dynamic charts |
-| **🏷️ Auto-Categorization** | Automatically classifies transactions into categories (Food, Transport, Entertainment, etc.) |
+| **🏷️ AI Auto-Categorization** | Automatically classifies transactions into categories (Food, Transport, Entertainment, etc.) using AI |
 | **🤖 AI Chatbot** | Ask natural language questions about your spending ("How much did I spend on groceries last month?") |
 | **📁 CSV Upload** | Upload your own bank statements; the app reads and classifies the data automatically |
-| **🔒 Privacy-First** | Runs entirely locally with Ollama — your financial data never leaves your machine |
+| **🔒 Privacy Mode Toggle** | Control exactly how much data is shared with the AI — aggregated summaries only, or detailed breakdowns |
 
 ---
 
 ## 📋 Requirements
 
-### Local Setup (Recommended for Development)
-
 - **Python 3.9+**
-- **Ollama** installed locally ([ollama.com](https://ollama.com))
-- **Phi-3 model** pulled via Ollama:
-  ```bash
-  ollama pull phi3:mini
-  ```
-
-### For Deployment (No Local Installations Needed)
-
-See the [Deployment Options](#-deployment-options) section below for cloud-hosted alternatives that eliminate the need for users to install Ollama or Python.
+- **Hugging Face API token** (free — get yours at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens))
 
 ---
 
@@ -68,13 +60,24 @@ plotly>=5.18.0
 requests>=2.31.0
 python-dateutil>=2.8.0
 scikit-learn>=1.3.0
+huggingface_hub>=0.23.0
+python-dotenv>=1.0.0
+toml>=0.10.2
 ```
 
-### 4. Start Ollama (Local LLM)
-Ensure Ollama is running in the background:
+### 4. Set Up Your API Token
+
+Create a `.env` file in the project root:
 ```bash
-ollama serve
+cp .env.example .env
 ```
+
+Edit `.env` and add your token:
+```
+HF_TOKEN=hf_your_token_here
+```
+
+> **Get a free token:** [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
 
 ### 5. Run the App
 ```bash
@@ -90,15 +93,14 @@ The app will open at `http://localhost:8501`
 ```
 spending-analytics/
 ├── app.py                  # Main Streamlit application
+├── llm_client_hf.py        # Hugging Face Inference API client
+├── secrets_manager.py      # Secure API key handling
 ├── requirements.txt        # Python dependencies
+├── .env.example            # Template for local API keys
+├── .gitignore             # Prevents committing secrets
 ├── README.md              # This file
 ├── synthetic_bank_data/    # Sample data folder
 │   └── combined_transactions.csv
-├── utils/
-│   ├── data_loader.py      # CSV reading & validation
-│   ├── categorizer.py      # Transaction classification logic
-│   ├── llm_client.py       # Ollama/LLM integration
-│   └── visualizations.py   # Chart & dashboard helpers
 └── assets/
     └── demo_screenshot.png
 ```
@@ -109,14 +111,18 @@ spending-analytics/
 
 ### 1. Upload Your Data
 - Drag and drop your bank statement CSV file
-- Or use the included synthetic dataset for testing
+- Or use the included **synthetic sample data** for testing
 
 ### 2. Explore the Dashboard
 - View spending by category (pie charts, bar charts)
 - Track monthly trends over time
 - Identify top merchants and recurring payments
 
-### 3. Chat with Your Data
+### 3. AI Auto-Categorize
+- Click **"Auto-Categorize"** to have the AI classify all your transactions
+- Categories include: Food, Transport, Entertainment, Shopping, Utilities, Health, Education, Travel, Income, Other
+
+### 4. Chat with Your Data
 - Open the chatbot panel
 - Ask questions like:
   - *"What was my biggest expense this month?"*
@@ -125,77 +131,83 @@ spending-analytics/
 
 ---
 
-## ☁️ Deployment Options
+## 🔒 Privacy & Data Handling
 
-To let users run the app **without installing Ollama or Python**, consider these free hosting alternatives:
+### Privacy Mode (Built-In Toggle)
 
-### Option 1: Streamlit Community Cloud (Easiest)
-Deploy the Streamlit frontend for free, with the LLM hosted separately.
+The app includes a **Privacy Mode** switch in the sidebar that controls exactly what data is sent to the AI:
 
-- **Cost:** Free for public repos
-- **Steps:** Push to GitHub → Connect at [share.streamlit.io](https://share.streamlit.io) → Deploy in one click
-- **Note:** You'll need to point the app to a cloud-hosted LLM API instead of local Ollama
+| Mode | What AI Receives | Best For |
+|------|------------------|----------|
+| **🔒 ON (Default)** | Only aggregated summaries (totals, averages, top categories) | Real bank statements |
+| **⚠️ OFF** | Detailed breakdowns (top 20 transactions, full statistics) | Better AI answers, synthetic data |
 
-### Option 2: Oracle Cloud Free Tier + Ollama
-Host Ollama on a free cloud VM so users only access the web app.
-
-- **Cost:** Always free (4 OCPUs + 24GB RAM)
-- **Capacity:** Can run Phi-3 Mini, Llama 3.1 8B, or Mistral 7B (quantized)
-- **Performance:** ~5–8 tokens/second on ARM instances
-- **Guide:** See [this tutorial](https://medium.com/@viplav.fauzdar/running-multiple-open-source-llms-on-ocis-free-arm-tier-with-ollama-open-webui-f3193df00dc9) for setup instructions
-
-### Option 3: Hugging Face Inference API (Simplest LLM Hosting)
-Replace Ollama with a free Hugging Face API endpoint.
-
-- **Cost:** Free tier available
-- **Pros:** No VM management needed
-- **Cons:** Requires internet connection; rate limits apply
-
-### Option 4: Google Cloud Run (Serverless)
-Deploy Ollama in a serverless container that scales to zero.
-
-- **Cost:** Free tier includes $300 credits; pay only when used
-- **Best for:** Low-traffic demos or class presentations
-- **Note:** Requires GPU quota approval (can take a few days)
-
-### Recommended Architecture for Your Course Project
+### Data Flow
 
 ```
-┌─────────────────┐      ┌──────────────────┐
-│  Streamlit App  │──────▶│  Cloud LLM API   │
-│  (Free Hosting) │      │  (OCI/HuggingFace)│
-└─────────────────┘      └──────────────────┘
-        │
-        ▼
-┌─────────────────┐
-│  User CSV Upload │
-└─────────────────┘
+Your CSV → Streamlit App (your browser) → AI Summary → Hugging Face API
 ```
 
-This way, anyone with the link can use your app immediately — no setup required.
+- **Raw CSV files NEVER leave your device**
+- Only the text summary you approve is sent to Hugging Face
+- Data is encrypted in transit (HTTPS)
+- Subject to [Hugging Face's Privacy Policy](https://huggingface.co/privacy)
+
+### Security Best Practices
+
+- ✅ **Never commit `.env` or `.streamlit/secrets.toml` to GitHub**
+- ✅ Use `.gitignore` to protect sensitive files
+- ✅ Rotate your HF token regularly in [settings](https://huggingface.co/settings/tokens)
+- ✅ Use Privacy Mode ON when working with real financial data
 
 ---
 
-## 🧠 LLM Integration Details
+## ☁️ Deploy to Streamlit Community Cloud (FREE)
 
-The app uses **Ollama** with **Phi-3 Mini** by default. The LLM handles:
+### Step 1: Push to GitHub
 
-- **Natural language to query translation** (e.g., "food spending last month" → filtered DataFrame)
-- **Insight generation** (summarizing unusual spending patterns)
-- **Category suggestions** for uncategorized transactions
+Make sure your repo includes:
+- `app.py`, `llm_client_hf.py`, `secrets_manager.py`
+- `requirements.txt`
+- `.env.example` (template only — **no real token!**)
+- `.gitignore` (must exclude `.env` and secrets)
 
-### Switching to Cloud LLM
-In `utils/llm_client.py`, change the endpoint:
-```python
-# Local Ollama (default)
-OLLAMA_URL = "http://localhost:11434"
+### Step 2: Connect to Streamlit Cloud
 
-# Cloud-hosted Ollama (e.g., Oracle Cloud)
-# OLLAMA_URL = "http://YOUR_VM_IP:11434"
+1. Go to [share.streamlit.io](https://share.streamlit.io)
+2. Sign in with GitHub
+3. Click **"New app"**
+4. Select your repository
 
-# Hugging Face Inference API
-# OLLAMA_URL = "https://api-inference.huggingface.co/models/YOUR_MODEL"
-```
+### Step 3: Add Your Secret
+
+1. In Streamlit Cloud, go to **Settings → Secrets**
+2. Add:
+   ```toml
+   HF_TOKEN = "hf_your_actual_token"
+   ```
+3. Click **Save**
+
+### Step 4: Deploy
+
+Your app will be live at `https://your-app-name.streamlit.app`
+
+Anyone with the link can use it immediately — **no installations required**.
+
+---
+
+## 🧠 AI Models Available
+
+Choose your model in the app sidebar:
+
+| Model | Speed | Best For |
+|-------|-------|----------|
+| **microsoft/Phi-3-mini-4k-instruct** | Fast | General Q&A, categorization *(default)* |
+| **google/gemma-2-2b-it** | Very Fast | Simple queries, summaries |
+| **meta-llama/Llama-3.1-8B-Instruct** | Medium | Complex reasoning, detailed analysis |
+| **mistralai/Mistral-7B-Instruct-v0.3** | Medium | Balanced performance |
+
+All models run on Hugging Face's free Inference API tier.
 
 ---
 
@@ -206,18 +218,20 @@ This project was built for a **Data Mining course** and covers the full pipeline
 1. **Data Generation** — Synthetic bank transaction dataset creation
 2. **Exploratory Data Analysis (EDA)** — Understanding spending patterns
 3. **Preprocessing** — Cleaning, normalization, feature engineering
-4. **Classification** — Rule-based + ML categorization of transactions
-5. **Visualization** — Interactive dashboards with Streamlit
-6. **LLM Integration** — Natural language interface for data querying
+4. **Classification** — AI-powered categorization of transactions
+5. **Visualization** — Interactive dashboards with Streamlit + Plotly
+6. **LLM Integration** — Natural language interface via Hugging Face API
+7. **Deployment** — Cloud hosting with privacy controls
 
 ---
 
 ## 🤝 Contributing
 
 This is a course project. Feel free to fork and extend with:
-- Additional bank statement formats (PDF, Excel)
+- Additional bank statement formats (PDF, Excel parsing)
 - More sophisticated ML categorization models
 - Multi-language support for the chatbot
+- Plaid / Open Banking API integration for live data
 
 ---
 
@@ -229,16 +243,24 @@ MIT License — Created for educational purposes.
 
 ## 🙋 FAQ
 
-**Q: Do users need to install Ollama?**  
-A: Only for local mode. Use the [cloud deployment options](#-deployment-options) for zero-install access.
+**Q: Do I need to install Ollama or any local LLM?**  
+A: **No.** The app uses Hugging Face's cloud API. Everything works online.
+
+**Q: Is my financial data safe?**  
+A: With **Privacy Mode ON** (default), only aggregated summaries are sent to the AI. Your raw CSV never leaves your device. For maximum privacy, run locally with a self-hosted LLM (see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)).
 
 **Q: What CSV format is supported?**  
-A: The app expects columns like: `date`, `description`, `amount`, `type` (debit/credit). It auto-detects common bank statement formats.
+A: The app auto-detects common columns: `date`, `description`/`merchant`, `amount`, `type` (debit/credit), and `category`. Flexible column name matching is built in.
 
-**Q: Can I use my own LLM instead of Phi-3?**  
-A: Yes! Any model available on Ollama (Llama 3, Mistral, Gemma) or any OpenAI-compatible API will work.
+**Q: Can I use a different LLM provider?**  
+A: Yes! Modify `llm_client_hf.py` to point to OpenAI, Anthropic, or any OpenAI-compatible API endpoint.
+
+**Q: Is the Hugging Face API really free?**  
+A: Yes, there is a generous free tier for testing and small projects. Rate limits apply (~1-2 requests/second). For production use, consider Hugging Face Pro ($9/month) or dedicated inference endpoints.
+
+**Q: Why is the AI slow sometimes?**  
+A: Free-tier models have "cold starts" — the first request may take 10-30 seconds as the model loads. Subsequent requests are faster.
 
 ---
 
-**Built with ❤️ using Python, Streamlit, and Ollama**
-
+**Built with ❤️ using Python, Streamlit, Plotly, and Hugging Face**
