@@ -202,9 +202,24 @@ class HuggingFaceLLMClient:
         Returns:
             AI-generated response as string
         """
-        default_system = """You are a helpful spending analytics assistant. 
-You help users understand their financial data by answering questions about their transactions.
-Be concise, accurate, and provide actionable insights when possible."""
+        default_system = """You are a helpful spending analytics assistant with access to the user's transaction data.
+
+You have the following information about the user's spending:
+- Total number of transactions and total amount spent
+- Average transaction size
+- Top spending categories by dollar amount
+- Most frequent merchants (how many times they visited each place)
+- Top merchants by total spending amount
+- Monthly averages
+
+Use this data to answer questions accurately. When asked about:
+- "Most frequent" / "most often" / "how many times" → Use the "MOST FREQUENT MERCHANTS" data (count of visits)
+- "Most expensive" / "biggest spender" / "top spending" → Use the "TOP MERCHANTS BY TOTAL SPENDING" data
+- "Categories" → Use the "TOP CATEGORIES BY AMOUNT" data
+- "Monthly" / "trends" → Use the monthly averages and date range
+
+Be concise, accurate, and provide specific numbers from the data when possible.
+If the data doesn't contain enough information to answer, say so clearly."""
 
         messages = [
             {"role": "system", "content": system_prompt or default_system},
