@@ -23,9 +23,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
 from datetime import datetime
-import re
 
 # Hugging Face LLM integration
 from llm_client_hf import HuggingFaceLLMClient, get_llm_client
@@ -39,16 +37,130 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# =============================================================================
+# CUSTOM CSS - Scoped for reliability
+# =============================================================================
 st.markdown("""
     <style>
-    .main-header { font-size: 2.5rem; font-weight: bold; color: #1f77b4; }
-    .sub-header { font-size: 1.2rem; color: #666; margin-bottom: 2rem; }
-    .metric-card { background-color: #f0f2f6; padding: 1rem; border-radius: 0.5rem; }
-    .chat-message { padding: 1rem; border-radius: 0.5rem; margin: 0.5rem 0; }
-    .user-message { background-color: #e3f2fd; }
-    .ai-message { background-color: #f3e5f5; }
-    .privacy-banner { background-color: #fff3e0; padding: 0.75rem; border-radius: 0.5rem; border-left: 4px solid #ff9800; }
+    /* Main app background */
+    .stApp {
+        background-color: #0e1117;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #1a1d24;
+        border-right: 1px solid #2d3139;
+    }
+
+    /* Metric cards */
+    div[data-testid="stMetricValue"] {
+        font-size: 1.5rem !important;
+        font-weight: 700 !important;
+        color: #fafafa !important;
+    }
+
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.85rem !important;
+        color: #a0a0a0 !important;
+    }
+
+    /* Dataframe styling */
+    .stDataFrame {
+        font-size: 0.9rem;
+    }
+
+    /* Chat message containers */
+    .user-msg {
+        background-color: #1e3a5f;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border-left: 4px solid #4fc3f7;
+        margin: 8px 0;
+        color: #e0e0e0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .ai-msg {
+        background-color: #2d1b4e;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border-left: 4px solid #ce93d8;
+        margin: 8px 0;
+        color: #e0e0e0;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    /* Privacy banner */
+    .privacy-banner {
+        background-color: #3e2723;
+        border: 1px solid #ff9800;
+        border-left: 4px solid #ff9800;
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: #ffcc80;
+        font-size: 0.9rem;
+        margin: 12px 0;
+    }
+
+    /* Info cards */
+    .info-card {
+        background-color: #1a1d24;
+        border: 1px solid #2d3139;
+        padding: 16px;
+        border-radius: 8px;
+        color: #c0c0c0;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+
+    /* Upload area */
+    [data-testid="stFileUploader"] {
+        background-color: #1a1d24;
+        border: 2px dashed #2d3139;
+        border-radius: 8px;
+        padding: 20px;
+    }
+
+    /* Buttons */
+    .stButton > button {
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Divider color */
+    hr {
+        border-color: #2d3139 !important;
+        margin: 2rem 0 !important;
+    }
+
+    /* Footer links */
+    .footer-link {
+        color: #64b5f6;
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+
+    .footer-link:hover {
+        color: #90caf9;
+        text-decoration: underline;
+    }
+
+    /* Main title area */
+    .main-title {
+        color: #64b5f6;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+
+    .sub-title {
+        color: #a0a0a0;
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+        line-height: 1.5;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -67,13 +179,13 @@ if 'llm_client' not in st.session_state:
 
 
 # =============================================================================
-# SIDEBAR: API KEY & SETTINGS
+# SIDEBAR
 # =============================================================================
 with st.sidebar:
-    st.title("⚙️ Settings")
+    st.markdown("## ⚙️ Settings")
 
-    # API Key Section
-    st.subheader("🔑 AI Connection")
+    # AI Connection
+    st.markdown("### 🔑 AI Connection")
 
     if not check_token_available():
         st.warning("API token needed for AI features")
@@ -95,10 +207,10 @@ with st.sidebar:
             os.environ.pop("HF_TOKEN", None)
             st.rerun()
 
-    st.divider()
+    st.markdown("---")
 
     # Privacy Toggle
-    st.subheader("🔒 Privacy Mode")
+    st.markdown("### 🔒 Privacy Mode")
     privacy_mode = st.toggle(
         "Send only summaries to AI",
         value=True,
@@ -115,10 +227,10 @@ with st.sidebar:
     else:
         st.warning("⚠️ Detailed data will be sent to Hugging Face servers")
 
-    st.divider()
+    st.markdown("---")
 
     # Model Selection
-    st.subheader("🧠 AI Model")
+    st.markdown("### 🧠 AI Model")
     model_choice = st.selectbox(
         "Choose model:",
         [
@@ -127,21 +239,22 @@ with st.sidebar:
             "meta-llama/Llama-3.1-8B-Instruct (Detailed)",
             "mistralai/Mistral-7B-Instruct-v0.3 (Balanced)"
         ],
-        index=0
+        index=0,
+        label_visibility="collapsed"
     )
 
     selected_model = model_choice.split(" (")[0]
 
-    st.divider()
+    st.markdown("---")
 
     # About
     st.markdown("""
-    <small>
+    <div class="info-card">
     <b>About</b><br>
     Built for Data Mining course.<br>
     Uses Hugging Face Inference API.<br>
-    <a href="https://huggingface.co/privacy" target="_blank">HF Privacy Policy</a>
-    </small>
+    <a href="https://huggingface.co/privacy" target="_blank" class="footer-link">HF Privacy Policy</a>
+    </div>
     """, unsafe_allow_html=True)
 
 
@@ -160,16 +273,16 @@ except Exception as e:
 
 
 # =============================================================================
-# HEADER
+# HEADER - Using Streamlit native + CSS
 # =============================================================================
-st.markdown('<p class="main-header">💰 Spending Analytics</p>', unsafe_allow_html=True)
-st.markdown('<p class="sub-header">Upload your bank statements, visualize your spending, and chat with AI about your finances.</p>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">💰 Spending Analytics</h1>', unsafe_allow_html=True)
+st.markdown('<p class="sub-title">Upload your bank statements, visualize your spending, and chat with AI about your finances.</p>', unsafe_allow_html=True)
 
 
 # =============================================================================
 # DATA UPLOAD SECTION
 # =============================================================================
-st.subheader("📁 Upload Your Data")
+st.markdown("### 📁 Upload Your Data")
 
 upload_col1, upload_col2 = st.columns([2, 1])
 
@@ -182,7 +295,7 @@ with upload_col1:
 
 with upload_col2:
     st.markdown("""
-    <div style="background-color:#f0f2f6;padding:1rem;border-radius:0.5rem;">
+    <div class="info-card">
     <b>📋 Supported Formats:</b><br>
     • date (YYYY-MM-DD)<br>
     • description / merchant<br>
@@ -244,7 +357,6 @@ def preprocess_data(df):
     # Clean amounts
     if 'amount' in df.columns:
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
-        # Handle debit/credit logic
         if 'type' in df.columns:
             df.loc[df['type'].str.lower().isin(['credit', 'income', 'deposit']), 'amount'] = -df['amount'].abs()
         df['amount'] = df['amount'].abs()
@@ -264,8 +376,8 @@ if st.session_state.df is not None:
     # =============================================================================
     # DASHBOARD METRICS
     # =============================================================================
-    st.divider()
-    st.subheader("📊 Dashboard Overview")
+    st.markdown("---")
+    st.markdown("### 📊 Dashboard Overview")
 
     metric_cols = st.columns(4)
 
@@ -295,11 +407,9 @@ if st.session_state.df is not None:
     chart_col1, chart_col2 = st.columns(2)
 
     with chart_col1:
-        # Category breakdown
         if 'category' in df.columns and not df['category'].isna().all():
             cat_data = df.groupby('category')['amount'].sum().sort_values(ascending=False).head(10)
         else:
-            # Simple merchant-based grouping as fallback
             cat_data = df.groupby('description')['amount'].sum().sort_values(ascending=False).head(10)
 
         fig_pie = px.pie(
@@ -310,10 +420,15 @@ if st.session_state.df is not None:
             color_discrete_sequence=px.colors.qualitative.Set3
         )
         fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+        fig_pie.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#e0e0e0'),
+            title_font_color='#fafafa'
+        )
         st.plotly_chart(fig_pie, use_container_width=True)
 
     with chart_col2:
-        # Monthly trend
         if 'month' in df.columns:
             monthly = df.groupby('month')['amount'].sum().reset_index()
             fig_line = px.line(
@@ -324,23 +439,30 @@ if st.session_state.df is not None:
                 markers=True,
                 labels={'amount': 'Amount ($)', 'month': 'Month'}
             )
-            fig_line.update_layout(xaxis_tickangle=-45)
+            fig_line.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='#e0e0e0'),
+                title_font_color='#fafafa',
+                xaxis_tickangle=-45
+            )
             st.plotly_chart(fig_line, use_container_width=True)
         else:
             st.info("No date column found for trend analysis")
 
     # Top transactions
-    st.subheader("🔝 Top Transactions")
-    top_n = st.slider("Show top:", 5, 50, 10)
-    top_transactions = df.nlargest(top_n, 'amount')[['date', 'description', 'amount', 'category'] if 'category' in df.columns else ['date', 'description', 'amount']]
+    st.markdown("### 🔝 Top Transactions")
+    top_n = st.slider("Show top:", 5, 50, 10, label_visibility="collapsed")
+    display_cols = ['date', 'description', 'amount', 'category'] if 'category' in df.columns else ['date', 'description', 'amount']
+    top_transactions = df.nlargest(top_n, 'amount')[display_cols]
     st.dataframe(top_transactions, use_container_width=True, hide_index=True)
 
 
     # =============================================================================
     # AI CATEGORIZATION
     # =============================================================================
-    st.divider()
-    st.subheader("🏷️ AI-Powered Categorization")
+    st.markdown("---")
+    st.markdown("### 🏷️ AI-Powered Categorization")
 
     if st.session_state.llm_client is None:
         st.info("🔑 Add your Hugging Face token in the sidebar to enable AI categorization")
@@ -349,7 +471,7 @@ if st.session_state.df is not None:
 
         with cat_cols[0]:
             if not st.session_state.categorized:
-                st.markdown("Your transactions are not categorized yet. Click the button to use AI for automatic categorization.")
+                st.write("Your transactions are not categorized yet. Click the button to use AI for automatic categorization.")
             else:
                 st.success("✅ Transactions already categorized")
 
@@ -363,10 +485,9 @@ if st.session_state.df is not None:
                         try:
                             desc = str(row.get('description', 'Unknown'))
                             amount = float(row.get('amount', 0))
-
                             cat = st.session_state.llm_client.categorize_transaction(desc, amount)
                             categories.append(cat)
-                        except Exception as e:
+                        except Exception:
                             categories.append("Other")
 
                         progress_bar.progress(min((i + 1) / len(df), 1.0))
@@ -381,8 +502,8 @@ if st.session_state.df is not None:
     # =============================================================================
     # AI CHATBOT
     # =============================================================================
-    st.divider()
-    st.subheader("🤖 Chat with Your Spending Data")
+    st.markdown("---")
+    st.markdown("### 🤖 Chat with Your Spending Data")
 
     if st.session_state.llm_client is None:
         st.info("🔑 Add your Hugging Face token in the sidebar to enable the AI chatbot")
@@ -391,9 +512,7 @@ if st.session_state.df is not None:
         if privacy_mode:
             st.markdown("""
             <div class="privacy-banner">
-            <b>🔒 Privacy Mode: ON</b><br>
-            The AI only receives aggregated summaries (totals, averages, top categories).
-            No individual transactions are shared.
+            <b>🔒 Privacy Mode: ON</b> — The AI only receives aggregated summaries (totals, averages, top categories). No individual transactions are shared.
             </div>
             """, unsafe_allow_html=True)
         else:
@@ -402,32 +521,29 @@ if st.session_state.df is not None:
         # Chat history display
         for msg in st.session_state.chat_history:
             if msg["role"] == "user":
-                st.markdown(f'<div class="chat-message user-message"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="user-msg"><b>You:</b> {msg["content"]}</div>', unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="chat-message ai-message"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="ai-msg"><b>🤖 AI:</b> {msg["content"]}</div>', unsafe_allow_html=True)
 
         # Input
         user_question = st.chat_input("Ask about your spending...")
 
         if user_question:
-            # Add user message to history
             st.session_state.chat_history.append({"role": "user", "content": user_question})
 
             with st.spinner("AI is thinking..."):
                 try:
                     # Build data summary based on privacy mode
                     if privacy_mode:
-                        # Safe summary only
                         summary = f"""Spending Summary:
 - Total transactions: {len(df)}
 - Total amount: ${df['amount'].sum():.2f}
 - Average transaction: ${df['amount'].mean():.2f}
 - Date range: {df['date'].min().strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A'} to {df['date'].max().strftime('%Y-%m-%d') if 'date' in df.columns else 'N/A'}
 - Top categories: {df.groupby('category')['amount'].sum().sort_values(ascending=False).head(5).to_dict() if 'category' in df.columns else 'Not categorized'}
-- Monthly averages: {df.groupby('month')['amount'].sum().mean() if 'month' in df.columns else 'N/A'}
+- Monthly averages: ${df.groupby('month')['amount'].sum().mean():.2f if 'month' in df.columns else 'N/A'}
 """
                     else:
-                        # More detailed (still not raw CSV)
                         summary = f"""Detailed Transaction Data:
 {df[['date', 'description', 'amount', 'category']].head(20).to_string() if 'category' in df.columns else df[['date', 'description', 'amount']].head(20).to_string()}
 
@@ -435,13 +551,11 @@ Summary statistics:
 {df.groupby('category')['amount'].agg(['sum', 'mean', 'count']).to_string() if 'category' in df.columns else 'Categories not available'}
 """
 
-                    # Call LLM
                     response = st.session_state.llm_client.query_spending(
                         user_question=user_question,
                         transaction_summary=summary
                     )
 
-                    # Add AI response to history
                     st.session_state.chat_history.append({"role": "assistant", "content": response})
 
                 except Exception as e:
@@ -450,7 +564,6 @@ Summary statistics:
 
             st.rerun()
 
-        # Clear chat button
         if st.session_state.chat_history and st.button("🗑️ Clear Chat"):
             st.session_state.chat_history = []
             st.rerun()
@@ -459,14 +572,14 @@ Summary statistics:
 # =============================================================================
 # FOOTER
 # =============================================================================
-st.divider()
+st.markdown("---")
 footer_cols = st.columns(3)
 
 with footer_cols[0]:
-    st.markdown("<small>Built with ❤️ for Data Mining course</small>", unsafe_allow_html=True)
+    st.markdown("Built with ❤️ for Data Mining course", help=None)
 
 with footer_cols[1]:
-    st.markdown("<small>Powered by Streamlit + Hugging Face</small>", unsafe_allow_html=True)
+    st.markdown("Powered by Streamlit + Hugging Face", help=None)
 
 with footer_cols[2]:
-    st.markdown("<small><a href='https://huggingface.co/privacy' target='_blank'>Privacy Policy</a></small>", unsafe_allow_html=True)
+    st.markdown('[Privacy Policy](https://huggingface.co/privacy)', unsafe_allow_html=True)
