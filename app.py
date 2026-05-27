@@ -570,13 +570,19 @@ if st.session_state.df is not None:
 
                         # Get most frequent merchants (privacy-safe: top 10 by count)
                         frequent_merchants = df['description'].value_counts().head(10).to_dict()
+                        frequent_lines = []
+                        for k, v in frequent_merchants.items():
+                            frequent_lines.append("  - " + str(k) + ": " + str(v) + " times")
                         frequent_str = "
-".join([f"  - {k}: {v} times" for k, v in frequent_merchants.items()])
+".join(frequent_lines)
 
                         # Get spending by merchant (top 10 by amount)
                         top_merchants = df.groupby('description')['amount'].sum().sort_values(ascending=False).head(10).to_dict()
+                        merchant_lines = []
+                        for k, v in top_merchants.items():
+                            merchant_lines.append("  - " + str(k) + ": $" + "{:.2f}".format(v))
                         top_merchants_str = "
-".join([f"  - {k}: ${v:.2f}" for k, v in top_merchants.items()])
+".join(merchant_lines)
 
                         summary = f"""Spending Data Summary:
 
