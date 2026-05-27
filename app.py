@@ -330,26 +330,37 @@ def preprocess_data(df):
     """Clean and standardize transaction data."""
     df = df.copy()
 
-    # Detect and rename columns (flexible matching)
+    # Detect and rename columns (flexible matching) — avoid duplicates
     col_mapping = {}
+    used_targets = set()
+
     for col in df.columns:
         col_lower = col.lower().strip()
+        target = None
+
         if any(x in col_lower for x in ['date', 'time', 'day']):
-            col_mapping[col] = 'date'
+            target = 'date'
         elif any(x in col_lower for x in ['desc', 'merchant', 'name', 'payee', 'transaction']):
-            col_mapping[col] = 'description'
+            target = 'description'
         elif any(x in col_lower for x in ['amount', 'sum', 'value', 'price', 'total']):
-            col_mapping[col] = 'amount'
+            target = 'amount'
         elif any(x in col_lower for x in ['type', 'debit', 'credit', 'direction']):
-            col_mapping[col] = 'type'
+            target = 'type'
         elif any(x in col_lower for x in ['category', 'cat', 'group']):
-            col_mapping[col] = 'category'
+            target = 'category'
+
+        # Only map if target not already used (prevents duplicate column names)
+        if target and target not in used_targets:
+            col_mapping[col] = target
+            used_targets.add(target)
 
     df = df.rename(columns=col_mapping)
 
-    # Parse dates
+    # Parse dates — handle multiple date columns safely
     if 'date' in df.columns:
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # If date column is already datetime, skip conversion
+        if not pd.api.types.is_datetime64_any_dtype(df['date']):
+            df['date'] = pd.to_datetime(df['date'], errors='coerce')
         df['month'] = df['date'].dt.to_period('M').astype(str)
         df['year'] = df['date'].dt.year
         df['day_of_week'] = df['date'].dt.day_name()
@@ -358,7 +369,9 @@ def preprocess_data(df):
     if 'amount' in df.columns:
         df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
         if 'type' in df.columns:
-            df.loc[df['type'].str.lower().isin(['credit', 'income', 'deposit']), 'amount'] = -df['amount'].abs()
+            # Handle both string and non-string type columns
+            type_col = df['type'].astype(str).str.lower()
+            df.loc[type_col.isin(['credit', 'income', 'deposit']), 'amount'] = -df['amount'].abs()
         df['amount'] = df['amount'].abs()
 
     # Ensure description exists
@@ -366,8 +379,6 @@ def preprocess_data(df):
         df['description'] = 'Unknown'
 
     return df
-
-
 if st.session_state.df is not None:
     df = preprocess_data(st.session_state.df)
     st.session_state.df = df
