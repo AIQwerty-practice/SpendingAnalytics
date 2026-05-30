@@ -273,19 +273,11 @@ If the data doesn't contain enough information to answer, say so clearly."""
         for i, t in enumerate(transactions):
             lines.append(f"{i+1}. {t['description']} | ${t['amount']}")
 
-        tx_list = "
-".join(lines)
+        tx_list = "\n".join(lines)
 
         messages = [
             {"role": "system", "content": "You categorize bank transactions. For each numbered item, reply with ONLY the category name. Categories: Food, Transport, Entertainment, Shopping, Utilities, Health, Education, Travel, Income, Other. Reply in the exact same numbered format."},
-            {"role": "user", "content": f"Categorize these transactions:
-
-{tx_list}
-
-Reply in this exact format (one per line):
-1. CategoryName
-2. CategoryName
-..."}
+            {"role": "user", "content": f"Categorize these transactions:\n\n{tx_list}\n\nReply in this exact format (one per line):\n1. CategoryName\n2. CategoryName\n..."}
         ]
 
         response = self.chat(messages, max_tokens=200, temperature=0.1)
@@ -293,8 +285,7 @@ Reply in this exact format (one per line):
 
         # Parse the numbered response
         categories = []
-        for line in raw_text.split("
-"):
+        for line in raw_text.split("\n"):
             line = line.strip()
             if not line:
                 continue
