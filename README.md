@@ -23,14 +23,14 @@ Expected outputs:
 
 ```mermaid
 flowchart TD
-    A[generate_synthetic_dataset.py] --> B[synthetic_bank_data/combined_transactions.csv]
-    B --> C[retrain_unified_model.py]
-    C --> D[spending_classifier.pkl]
-    B --> E[app.py Streamlit Dashboard]
+    A["generate_synthetic_dataset.py"] --> B["synthetic_bank_data/combined_transactions.csv"]
+    B --> C["retrain_unified_model.py"]
+    C --> D["spending_classifier.pkl"]
+    B --> E["app.py Streamlit Dashboard"]
     D --> E
-    E --> F[spending_analytics.db SQLite]
-    F --> G[llm_client.py Chatbot]
-    G --> H[Ollama Local or Hugging Face Cloud]
+    E --> F["spending_analytics.db SQLite"]
+    F --> G["llm_client.py Chatbot"]
+    G --> H["Ollama Local or Hugging Face Cloud"]
 ```
 
 ## Project Structure
