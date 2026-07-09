@@ -12,6 +12,9 @@ from database import run_select_query, validate_select_sql
 from paths import DATABASE_PATH
 
 
+FOOD_CATEGORIES = ["Groceries", "Dining", "Coffee"]
+FOOD_ALIASES = {"food", "foods", "food spending", "food expenses"}
+
 CATEGORY_ALIASES = {
     "income": "Income",
     "housing": "Housing",
@@ -20,6 +23,8 @@ CATEGORY_ALIASES = {
     "groceries": "Groceries",
     "grocery": "Groceries",
     "dining": "Dining",
+    "food": "Food",
+    "foods": "Food",
     "restaurant": "Dining",
     "restaurants": "Dining",
     "coffee": "Coffee",
@@ -74,6 +79,7 @@ Columns:
 - currency TEXT
 Use ABS(amount) when reporting spending.
 Use amount > 0 for income and amount < 0 for expenses.
+Food is a composite spending concept: category IN ('Groceries', 'Dining', 'Coffee').
 Only generate SELECT statements.
 """
 
@@ -191,6 +197,20 @@ def detect_category(q: str) -> str | None:
         if re.search(rf"\b{re.escape(alias)}\b", q):
             return category
     return None
+
+
+def detect_category_group(q: str) -> list[str] | None:
+    category = detect_category(q)
+    if category == "Food":
+        return FOOD_CATEGORIES
+    if category:
+        return [category]
+    return None
+
+
+def category_condition(categories: list[str]) -> str:
+    values = ", ".join("'" + category.replace("'", "''") + "'" for category in categories)
+    return f"category IN ({values})" if len(categories) > 1 else f"category = {values}"
 
 
 def detect_bank(q: str) -> str | None:
@@ -319,6 +339,7 @@ def sanitize_llm_sql(question: str, sql: str, selected_profile: str | None = Non
         "bank": detect_bank(q),
         "category": detect_category(q),
     }
+    mentioned_category_group = detect_category_group(q)
 
     if is_income_question(question):
         cleaned = remove_amount_filters(cleaned)
@@ -340,6 +361,10 @@ def sanitize_llm_sql(question: str, sql: str, selected_profile: str | None = Non
             if column == "profile" and selected_profile and selected_profile != "All":
                 allow_filter = True
                 valid_value = selected_profile
+            if column == "category" and raw_value.lower() == "food" and mentioned_category_group:
+                cleaned = remove_filter_value(cleaned, column, raw_value)
+                adjusted = True
+                continue
             if column in {"bank", "category"} and is_income_question(question) and not mentioned[column]:
                 allow_filter = False
 
@@ -365,12 +390,12 @@ def sanitize_llm_sql(question: str, sql: str, selected_profile: str | None = Non
         adjusted = True
 
     if (
-        mentioned["category"]
-        and mentioned["category"] != "Income"
+        mentioned_category_group
+        and "Income" not in mentioned_category_group
         and not is_income_question(question)
-        and not re.search(r"\bcategory\s*=", cleaned, flags=re.IGNORECASE)
+        and not re.search(r"\bcategory\s*(=|in)\b", cleaned, flags=re.IGNORECASE)
     ):
-        cleaned = add_required_condition(cleaned, f"category = '{mentioned['category']}'")
+        cleaned = add_required_condition(cleaned, category_condition(mentioned_category_group))
         adjusted = True
 
     return validate_select_sql(cleaned) + ";", adjusted
@@ -392,6 +417,7 @@ def add_profile_filter(sql: str, selected_profile: str | None) -> str:
 def heuristic_sql(question: str, selected_profile: str | None = None) -> str:
     q = question.lower()
     category = detect_category(q)
+    category_group = detect_category_group(q)
     bank = detect_bank(q)
     profile = detect_profile(q)
     year = detect_year(q)
@@ -400,8 +426,8 @@ def heuristic_sql(question: str, selected_profile: str | None = None) -> str:
     asking_income = is_income_question(question)
 
     filters = ["amount > 0" if asking_income else "amount < 0"]
-    if category and category != "Income":
-        filters.append(f"category = '{category}'")
+    if category_group and "Income" not in category_group:
+        filters.append(category_condition(category_group))
     if bank:
         filters.append(f"bank = '{bank}'")
     if profile:
@@ -548,10 +574,11 @@ def heuristic_sql(question: str, selected_profile: str | None = None) -> str:
         """
     elif "last month" in q and category:
         start, end = month_bounds("last month")
+        last_month_filters = ["amount < 0", category_condition(category_group or [category]), f"date >= '{start}'", f"date < '{end}'"]
         sql = f"""
         SELECT ROUND(SUM(ABS(amount)), 2) AS total_spent, COUNT(*) AS transaction_count
         FROM transactions
-        WHERE amount < 0 AND category = '{category}' AND date >= '{start}' AND date < '{end}';
+        {build_where(last_month_filters)};
         """
     elif category or bank or profile or year or month or merchant:
         sql = f"""
