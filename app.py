@@ -12,7 +12,7 @@ from data_utils import REQUIRED_COLUMNS, expense_view, load_dataset, normalize_t
 from database import load_dataframe, run_select_query, save_transactions
 from generate_demo_dataset import generate_demo_transactions
 from generate_synthetic_dataset import BANKS, PROFILES, YEARS, generate_transactions
-from llm_client import LLMSettings, answer_question_with_guardrails, category_condition, detect_category, detect_category_group, detect_merchant, detect_month, detect_year
+from llm_client import LLMSettings, answer_question_with_guardrails, detect_category, detect_merchant, detect_month, detect_year
 from paths import DATASET_PATH, DEMO_DATASET_PATH
 
 
@@ -942,6 +942,19 @@ def sql_literal(value: str) -> str:
     return value.replace("'", "''")
 
 
+def app_detect_category_group(category: str | None) -> list[str] | None:
+    if category == "Food":
+        return ["Groceries", "Dining", "Coffee"]
+    if category:
+        return [category]
+    return None
+
+
+def app_category_condition(categories: list[str]) -> str:
+    values = ", ".join(f"'{sql_literal(category)}'" for category in categories)
+    return f"category IN ({values})" if len(categories) > 1 else f"category = {values}"
+
+
 def get_example_groups(active_profiles: list[str], selected_profile: str) -> dict[str, list[str]]:
     if selected_profile != "All":
         return {selected_profile: PROFILE_EXAMPLES.get(selected_profile, GLOBAL_EXAMPLES)}
@@ -978,7 +991,7 @@ def build_transaction_detail_outputs(question: str, selected_profile: str) -> tu
     asking_income = is_income_question(question)
     listing_transactions = is_transaction_listing_question(question)
     category = detect_category(q)
-    category_group = detect_category_group(q)
+    category_group = app_detect_category_group(category)
     merchant = "starbucks" if "starbucks" in q else detect_merchant(q)
     year = detect_year(q)
     month = detect_month(q)
@@ -991,7 +1004,7 @@ def build_transaction_detail_outputs(question: str, selected_profile: str) -> tu
     if selected_profile != "All":
         filters.append(f"profile = '{sql_literal(selected_profile)}'")
     if category_group and "Income" not in category_group and not asking_income:
-        filters.append(category_condition(category_group))
+        filters.append(app_category_condition(category_group))
         label_parts.append("Food" if category == "Food" else category_group[0])
     if merchant and not asking_income:
         filters.append(f"LOWER(merchant) LIKE '%{sql_literal(merchant.lower())}%'")
