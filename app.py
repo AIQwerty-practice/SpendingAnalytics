@@ -1072,8 +1072,11 @@ def ensure_seed_data() -> pd.DataFrame:
         DATASET_PATH.parent.mkdir(parents=True, exist_ok=True)
         data.to_csv(DATASET_PATH, index=False)
 
-    if load_dataframe().empty:
+    if not st.session_state.get("seed_data_loaded_this_session"):
         save_transactions(data, mode="replace")
+        set_active_dataset("original")
+        reset_chatbot_profile_context(sorted(data["profile"].dropna().unique().tolist()))
+        st.session_state["seed_data_loaded_this_session"] = True
     return data
 
 
