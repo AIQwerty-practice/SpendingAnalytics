@@ -238,16 +238,16 @@ def apply_theme() -> None:
 
         .fintech-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 0.85rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 0.7rem;
             margin: 1rem 0;
         }
 
         .kpi-card {
-            min-height: 146px;
+            min-height: 138px;
             border: 1px solid rgba(45, 211, 255, 0.24);
             border-radius: 20px;
-            padding: 0.95rem;
+            padding: 0.85rem;
             background:
                 radial-gradient(circle at 18% 18%, rgba(34, 211, 238, 0.13), transparent 24%),
                 linear-gradient(145deg, rgba(12, 28, 54, 0.86), rgba(5, 15, 31, 0.78));
@@ -265,21 +265,21 @@ def apply_theme() -> None:
         .kpi-top {
             display: flex;
             align-items: flex-start;
-            gap: 0.62rem;
-            margin-bottom: 0.8rem;
+            gap: 0.5rem;
+            margin-bottom: 0.7rem;
             min-width: 0;
         }
 
         .kpi-icon {
-            width: 48px;
-            height: 48px;
+            width: 42px;
+            height: 42px;
             border-radius: 14px;
             display: grid;
             place-items: center;
-            font-size: 1.42rem;
+            font-size: 1.22rem;
             background: linear-gradient(135deg, rgba(0, 212, 255, 0.9), rgba(37, 99, 235, 0.72));
             box-shadow: 0 0 28px rgba(34, 211, 238, 0.24);
-            flex: 0 0 48px;
+            flex: 0 0 42px;
         }
 
         .kpi-icon-0 { background: linear-gradient(135deg, #10b981, #22d3ee); box-shadow: 0 0 30px rgba(16, 185, 129, 0.28); }
@@ -289,13 +289,13 @@ def apply_theme() -> None:
 
         .kpi-label {
             color: var(--muted);
-            font-size: 0.88rem;
+            font-size: 0.76rem;
             font-weight: 700;
         }
 
         .kpi-value {
             color: #f8fbff;
-            font-size: clamp(1.18rem, 1.42vw, 1.55rem);
+            font-size: clamp(0.95rem, 1.08vw, 1.28rem);
             font-weight: 900;
             line-height: 1.06;
             white-space: nowrap;
@@ -306,8 +306,8 @@ def apply_theme() -> None:
 
         .kpi-note {
             color: var(--green);
-            font-size: 0.82rem;
-            margin-top: 0.65rem;
+            font-size: 0.75rem;
+            margin-top: 0.55rem;
         }
 
         .fintech-panel {
@@ -518,8 +518,13 @@ def apply_theme() -> None:
             text-shadow: 0 0 16px rgba(34, 211, 238, 0.45);
         }
 
+        @media (max-width: 1050px) {
+            .fintech-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
         @media (max-width: 900px) {
-            .fintech-grid,
             .ai-status-grid,
             .pipeline-strip {
                 grid-template-columns: 1fr;
@@ -536,6 +541,12 @@ def apply_theme() -> None:
 
             .merchant-row,
             .transaction-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .fintech-grid {
                 grid-template-columns: 1fr;
             }
         }
