@@ -4,5 +4,3 @@ __pycache__/
 .streamlit/secrets.toml
 *.pyc
 spending_analytics.db
-spending_classifier.pkl
-synthetic_bank_data/combined_transactions.csv
